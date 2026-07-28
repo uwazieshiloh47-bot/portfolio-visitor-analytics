@@ -60,7 +60,7 @@ The complete check performs three separate jobs:
 - [x] Install and verify Node.js.
 - [ ] Install and verify the AWS CLI.
 - [ ] Install and verify Terraform.
-- [ ] Create one DynamoDB table manually.
+- [x] Create one DynamoDB table manually.
 - [x] Create and test one Lambda function manually.
 - [ ] Connect API Gateway to Lambda.
 - [ ] Call the API and verify the DynamoDB value changes.
@@ -84,6 +84,20 @@ The complete check performs three separate jobs:
 
 The function currently uses an AWS-created basic execution role that can write
 CloudWatch logs. It does not yet have permission to access DynamoDB.
+
+### DynamoDB checkpoint
+
+- Table: `portfolio-visitor-counter-dev`
+- Capacity mode: on-demand
+- Partition key: `counter_id` (String)
+- Sort key: none
+- Initial item: `counter_id = "total"`, `count = 0` (Number)
+- Encryption: AWS-owned key
+- Deletion protection: off for the disposable manual-learning resource
+- Tags: `Project = PortfolioVisitorAnalytics`, `Environment = dev`
+
+The table is persistent, but the Lambda execution role still cannot read or
+update it. That permission will be added separately using least privilege.
 
 ## Tutor-mode rule
 

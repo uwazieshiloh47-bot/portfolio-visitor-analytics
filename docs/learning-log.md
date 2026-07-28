@@ -44,7 +44,30 @@ Reflection:
 - [ ] Explain the difference between invocation duration and cold-start time.
 - [ ] Explain the difference between platform logs and application logs.
 
-### Checkpoint 1B: First API request
+### Checkpoint 1B: Persistent counter storage
+
+Verified facts:
+
+- Table: `portfolio-visitor-counter-dev`
+- Status: active
+- Capacity mode: on-demand
+- Partition key: `counter_id` (String)
+- Sort key: none
+- Initial item: `counter_id = "total"`, `count = 0` (Number)
+- Encryption at rest: AWS-owned key
+- Point-in-time recovery: off
+- Deletion protection: off
+- Lambda access: not granted yet
+
+Reflection:
+
+- [ ] Explain why Lambda memory is not durable storage.
+- [ ] Explain why `counter_id` is the partition key.
+- [ ] Explain why `count` must use DynamoDB's Number type.
+- [ ] Explain why on-demand capacity fits this early workload.
+- [ ] Explain why table creation and IAM permission are separate steps.
+
+### Checkpoint 1C: First API request
 
 To be completed after API Gateway invokes Lambda.
 

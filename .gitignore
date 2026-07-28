@@ -2,6 +2,7 @@
 node_modules/
 .downloads/
 .tools/
+.artifacts/
 
 # Build output
 dist/

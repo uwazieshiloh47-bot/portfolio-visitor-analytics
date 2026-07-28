@@ -56,17 +56,34 @@ The complete check performs three separate jobs:
 
 ## Learning milestones
 
-- [ ] Secure the AWS account and configure a cost budget.
-- [ ] Install and verify Node.js, AWS CLI, and Terraform.
+- [x] Secure the AWS account and configure a cost budget.
+- [x] Install and verify Node.js.
+- [ ] Install and verify the AWS CLI.
+- [ ] Install and verify Terraform.
 - [ ] Create one DynamoDB table manually.
-- [ ] Create and test one Lambda function manually.
+- [x] Create and test one Lambda function manually.
 - [ ] Connect API Gateway to Lambda.
 - [ ] Call the API and verify the DynamoDB value changes.
-- [ ] Inspect the request in CloudWatch logs.
+- [x] Inspect the request in CloudWatch logs.
 - [ ] Delete the manual learning resources.
 - [ ] Rebuild the same system with Terraform.
 - [ ] Add the analytics dashboard.
 - [ ] Add monitoring, security controls, and CI/CD.
+
+## Current AWS checkpoint
+
+- Region: `us-east-2` (US East, Ohio)
+- Function: `portfolio-visitor-api-dev`
+- Runtime: `nodejs24.x`
+- Architecture: `x86_64`
+- Handler: `index.handler`
+- Direct Lambda test: succeeded with HTTP status `200`
+- CloudWatch log group: `/aws/lambda/portfolio-visitor-api-dev`
+- Structured application log: `request_received`
+- Current log retention: never expires
+
+The function currently uses an AWS-created basic execution role that can write
+CloudWatch logs. It does not yet have permission to access DynamoDB.
 
 ## Tutor-mode rule
 

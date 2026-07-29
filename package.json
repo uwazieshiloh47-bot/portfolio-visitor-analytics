@@ -18,5 +18,9 @@
     "@types/aws-lambda": "^8.10.162",
     "@types/node": "^24.13.3",
     "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.1097.0",
+    "@aws-sdk/lib-dynamodb": "^3.1097.0"
   }
 }

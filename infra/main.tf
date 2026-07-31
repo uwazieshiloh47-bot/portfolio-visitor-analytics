@@ -1,6 +1,7 @@
 locals {
-  resource_prefix = "portfolio-visitor-${var.environment}"
-  lambda_zip      = abspath("${path.module}/${var.lambda_zip_path}")
+  resource_prefix      = "portfolio-visitor-${var.environment}"
+  lambda_function_name = "portfolio-visitor-api-${var.environment}"
+  lambda_zip           = abspath("${path.module}/${var.lambda_zip_path}")
 }
 
 resource "aws_dynamodb_table" "visitor_counter" {
@@ -23,7 +24,7 @@ resource "aws_dynamodb_table" "visitor_counter" {
 }
 
 resource "aws_cloudwatch_log_group" "lambda" {
-  name              = "/aws/lambda/${local.resource_prefix}-api"
+  name              = "/aws/lambda/${local.lambda_function_name}"
   retention_in_days = var.log_retention_days
 }
 
@@ -71,7 +72,7 @@ resource "aws_iam_role_policy" "lambda" {
 }
 
 resource "aws_lambda_function" "visitor" {
-  function_name = "${local.resource_prefix}-api"
+  function_name = local.lambda_function_name
   description   = "Returns and atomically increments the portfolio visitor count."
   role          = aws_iam_role.lambda.arn
   filename      = local.lambda_zip

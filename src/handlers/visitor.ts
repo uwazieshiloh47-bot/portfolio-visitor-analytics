@@ -5,15 +5,29 @@ import {
   UpdateCommand,
 } from "@aws-sdk/lib-dynamodb";
 import type {
+  APIGatewayProxyEventV2,
   APIGatewayProxyHandlerV2,
   APIGatewayProxyStructuredResultV2,
 } from "aws-lambda";
 
-const tableName = process.env.TABLE_NAME;
 const counterKey = { counter_id: "total" };
 
 const lowLevelClient = new DynamoDBClient({});
 const documentClient = DynamoDBDocumentClient.from(lowLevelClient);
+
+type DynamoCommand = GetCommand | UpdateCommand;
+
+interface DynamoDocumentClient {
+  send(command: DynamoCommand): Promise<{
+    Item?: Record<string, unknown>;
+    Attributes?: Record<string, unknown>;
+  }>;
+}
+
+interface VisitorHandlerDependencies {
+  tableName: string | undefined;
+  documentClient: DynamoDocumentClient;
+}
 
 function jsonResponse(
   statusCode: number,
@@ -28,7 +42,48 @@ function jsonResponse(
   };
 }
 
-export const handler: APIGatewayProxyHandlerV2 = async (event) => {
+function readCount(value: unknown, missingValue?: number): number {
+  if (value === undefined && missingValue !== undefined) {
+    return missingValue;
+  }
+
+  if (
+    typeof value !== "number" ||
+    !Number.isSafeInteger(value) ||
+    value < 0
+  ) {
+    throw new Error("Invalid counter value returned by DynamoDB");
+  }
+
+  return value;
+}
+
+function logVisitorMetric(count: number) {
+  console.log(
+    JSON.stringify({
+      _aws: {
+        Timestamp: Date.now(),
+        CloudWatchMetrics: [
+          {
+            Namespace: "PortfolioVisitorAnalytics",
+            Dimensions: [["Environment"]],
+            Metrics: [{ Name: "VisitorCount", Unit: "Count" }],
+          },
+        ],
+      },
+      Environment: process.env.ENVIRONMENT ?? "dev",
+      VisitorCount: count,
+    }),
+  );
+}
+
+export function createVisitorHandler({
+  tableName,
+  documentClient,
+}: VisitorHandlerDependencies) {
+  return async (
+    event: APIGatewayProxyEventV2,
+  ): Promise<APIGatewayProxyStructuredResultV2> => {
   if (!tableName) {
     console.error(
       JSON.stringify({
@@ -68,7 +123,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       );
 
       return jsonResponse(200, {
-        count: Number(result.Item?.count ?? 0),
+        count: readCount(result.Item?.count, 0),
       });
     }
 
@@ -88,9 +143,10 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
         }),
       );
 
-      return jsonResponse(200, {
-        count: Number(result.Attributes?.count ?? 0),
-      });
+      const count = readCount(result.Attributes?.count);
+      logVisitorMetric(count);
+
+      return jsonResponse(200, { count });
     }
 
     return jsonResponse(404, {
@@ -109,4 +165,10 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       message: "Internal server error",
     });
   }
-};
+  };
+}
+
+export const handler: APIGatewayProxyHandlerV2 = createVisitorHandler({
+  tableName: process.env.TABLE_NAME,
+  documentClient,
+});

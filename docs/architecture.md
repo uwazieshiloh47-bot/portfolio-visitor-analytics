@@ -53,7 +53,41 @@ These are intentionally postponed:
 - Custom domain and CDN
 - Authentication for the admin dashboard
 - WAF and bot-detection strategy
-- CI/CD implementation
+- Automated deployment
 - Multi-environment deployment
 
 Postponing them keeps the first debugging surface small.
+
+## Version 1 counting semantics
+
+The durable value is the number of successful `POST /visit` requests, not the
+number of unique visitors. The API cannot currently distinguish a person from
+a refresh, bot, monitoring probe, or direct scripted request.
+
+CORS is a browser policy, not an access-control boundary. The exact-origin
+configuration prevents unapproved browser origins from reading the API
+through JavaScript, but it cannot prevent a non-browser client from calling
+the public endpoint. API throttling limits bursts but does not make the count
+trustworthy analytics.
+
+Before the value is described as unique or verified traffic, define the
+desired unit—page view, session, or visitor—and add appropriate deduplication
+and abuse controls.
+
+## Infrastructure controls
+
+The Terraform stack under `infra/` now defines:
+
+- An on-demand, encrypted DynamoDB table with point-in-time recovery
+- A Node.js 24 Lambda function with five reserved concurrent executions
+- A least-privilege role limited to the counter table and function log group
+- Explicit `GET /count` and `POST /visit` HTTP API routes
+- Exact-origin CORS validation and API throttling
+- Fourteen-day Lambda and API Gateway log retention
+- Lambda-error and API-5xx alarms
+- A CloudWatch dashboard for visitor count, traffic, errors, latency, and
+  DynamoDB throttling
+
+`POST /visit` writes the latest counter value using CloudWatch Embedded Metric
+Format. CloudWatch extracts this structured log into the custom
+`PortfolioVisitorAnalytics/VisitorCount` metric used by the dashboard.

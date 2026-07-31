@@ -1,0 +1,4 @@
+allowed_origins = ["https://www.example.com"]
+
+# Optional: Terraform creates alarms without notification actions when omitted.
+# alarm_email = "you@example.com"

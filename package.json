@@ -12,11 +12,14 @@
     "typecheck": "tsc --project tsconfig.json --noEmit",
     "test": "node --test dist/test/**/*.test.js",
     "check": "npm run typecheck && npm run build && npm test",
-    "invoke:hello": "npm run build && node scripts/invoke-hello.mjs"
+    "invoke:hello": "npm run build && node scripts/invoke-hello.mjs",
+    "package:lambda": "npm run check && node scripts/package-lambda.mjs",
+    "test:api": "node scripts/test-api.mjs"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.162",
     "@types/node": "^24.13.3",
+    "esbuild": "^0.28.1",
     "typescript": "^7.0.2"
   },
   "dependencies": {

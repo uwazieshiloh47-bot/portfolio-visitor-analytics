@@ -77,3 +77,30 @@ To be completed after API Gateway invokes Lambda.
 - CloudWatch evidence:
 - Something that surprised me:
 - Something I can now explain:
+
+## Milestone 2: Tested and repeatable application build
+
+Verified locally:
+
+- The visitor handler uses dependency injection for DynamoDB tests.
+- Nine automated tests pass.
+- Missing counter items return zero, while malformed or incomplete DynamoDB
+  responses fail safely.
+- The deployment ZIP is generated from the visitor handler.
+- Packaging verifies that the ZIP contains only root-level `index.mjs`,
+  which exports `handler`.
+
+## Milestone 3: Infrastructure as code prepared
+
+Verified locally:
+
+- Terraform CLI version 1.15.8.
+- AWS provider version 6.57.1.
+- `terraform fmt` completed.
+- `terraform validate` succeeded.
+- The stack includes IAM, Lambda, DynamoDB, API Gateway, logs, alarms, a
+  dashboard, CORS, and throttling.
+
+Cloud verification remains pending until AWS credentials and the real
+portfolio origin are supplied. Do not mark Checkpoint 1C complete until the
+deployed smoke test and CloudWatch evidence have been recorded.

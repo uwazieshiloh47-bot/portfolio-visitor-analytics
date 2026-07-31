@@ -18,8 +18,10 @@ The first version has only two operations:
 - `POST /visit` increments the visitor count.
 - `GET /count` returns the current count.
 
-No dashboard, CI/CD pipeline, or advanced security is included until this
-small request flow works and can be explained.
+The repository now contains monitoring and continuous validation, but those
+features are supporting infrastructure rather than proof that the request
+flow works. Deployment automation and advanced traffic protection remain
+deferred until this small request flow is deployed, verified, and understood.
 
 ## Local development
 
@@ -36,6 +38,22 @@ Manually invoke the compiled hello handler:
 
 ```powershell
 .\scripts\npm-local.ps1 run invoke:hello
+```
+
+Create the Lambda deployment ZIP after all checks pass:
+
+```powershell
+.\scripts\npm-local.ps1 run package:lambda
+```
+
+The resulting `.artifacts/portfolio-visitor-api-dev.zip` contains a bundled
+`index.mjs`. Configure the Lambda handler as `index.handler`.
+
+If local PowerShell scripts are disabled, run the packaging command without
+changing the machine-wide execution policy:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\npm-local.ps1 run package:lambda
 ```
 
 The complete check performs three separate jobs:
@@ -59,7 +77,7 @@ The complete check performs three separate jobs:
 - [x] Secure the AWS account and configure a cost budget.
 - [x] Install and verify Node.js.
 - [ ] Install and verify the AWS CLI.
-- [ ] Install and verify Terraform.
+- [x] Install and verify Terraform.
 - [x] Create one DynamoDB table manually.
 - [x] Create and test one Lambda function manually.
 - [ ] Connect API Gateway to Lambda.
@@ -69,6 +87,23 @@ The complete check performs three separate jobs:
 - [ ] Rebuild the same system with Terraform.
 - [ ] Add the analytics dashboard.
 - [ ] Add monitoring, security controls, and CI/CD.
+
+Repository implementation is complete for the unchecked cloud milestones:
+Terraform defines the API integration, monitoring, dashboard, and baseline
+security controls, while GitHub Actions defines continuous validation (not
+automatic deployment). The
+checkboxes remain open until the resources are deployed and verified in AWS.
+
+## What the counter means
+
+Version 1 counts successful calls to `POST /visit`. It is an approximate
+request counter, not a count of unique people: refreshes, repeat visits, bots,
+and direct API calls can all increase it.
+
+Exact-origin CORS limits which browser frontends can read and invoke the API
+from JavaScript, but CORS is not authentication and does not stop scripts from
+calling the public endpoint. Do not present this value as verified analytics
+until a visit definition and bot or duplicate-request strategy are added.
 
 ## Current AWS checkpoint
 
@@ -112,3 +147,24 @@ For every resource, be able to answer:
 
 See [docs/architecture.md](docs/architecture.md) for the request flow and
 [docs/learning-log.md](docs/learning-log.md) for short milestone notes.
+Deployment and manual-resource adoption instructions are in
+[docs/deployment.md](docs/deployment.md).
+
+## Infrastructure validation
+
+The complete AWS stack is defined under `infra/`. Before deploying, copy
+`infra/terraform.tfvars.example` to `infra/terraform.tfvars` and replace the
+placeholder with the exact origin of the portfolio frontend.
+
+```powershell
+terraform -chdir=infra fmt -check
+terraform -chdir=infra init
+terraform -chdir=infra validate
+terraform -chdir=infra plan
+```
+
+The CI workflow runs application checks, creates the deployment bundle, and
+verifies its contents, audits production dependencies for high-severity
+findings, and validates Terraform on pushes to `main` and on pull requests. It
+does not deploy to AWS. It becomes active after this repository is pushed to
+GitHub.

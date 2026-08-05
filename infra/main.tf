@@ -82,7 +82,7 @@ resource "aws_lambda_function" "visitor" {
   memory_size   = 128
   timeout       = 5
 
-  reserved_concurrent_executions = 5
+  reserved_concurrent_executions = var.reserved_concurrency
   source_code_hash               = filebase64sha256(local.lambda_zip)
 
   environment {

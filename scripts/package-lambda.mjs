@@ -28,6 +28,20 @@ await build({
   target: "node24",
   sourcemap: false,
   minify: false,
+
+  // The AWS SDK is CommonJS internally and calls require("node:https") while
+  // loading. Bundled into ESM output, esbuild rewrites those calls to a shim
+  // that throws "Dynamic require of ... is not supported", and the function
+  // dies during init before the handler runs.
+  //
+  // Defining a real require from import.meta.url gives that CommonJS code
+  // something that works, while the output stays ESM.
+  banner: {
+    js: [
+      'import { createRequire as __createRequire } from "node:module";',
+      "const require = __createRequire(import.meta.url);",
+    ].join("\n"),
+  },
 });
 
 const archive =

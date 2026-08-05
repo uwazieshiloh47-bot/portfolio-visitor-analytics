@@ -43,3 +43,22 @@ variable "alarm_email" {
   type        = string
   default     = ""
 }
+
+variable "reserved_concurrency" {
+  description = <<-EOT
+    Reserved concurrent executions for the Lambda, used as a runaway-cost
+    guardrail. Use -1 to leave the function unreserved.
+
+    Defaults to -1 because a new AWS account has a total Lambda concurrency
+    limit of 10, and AWS refuses any reservation that would drop the account's
+    unreserved pool below 10. Raise the "Concurrent executions" quota in
+    Service Quotas first, then set this to 5.
+  EOT
+  type        = number
+  default     = -1
+
+  validation {
+    condition     = var.reserved_concurrency == -1 || var.reserved_concurrency > 0
+    error_message = "Use -1 for no reservation, or a positive number of executions."
+  }
+}

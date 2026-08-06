@@ -58,6 +58,25 @@ The test reads the count, increments it once, and confirms the following read
 returns the incremented value. Inspect the Lambda and API Gateway log groups
 and the dashboard URL from the Terraform outputs afterward.
 
+## The frontend depends on the generated API URL
+
+The portfolio hardcodes this API's base URL in `visitor-counter.js`. API
+Gateway generates the ID, so recreating the API produces a different URL and
+the portfolio silently stops showing the count — the fetch fails, the counter
+stays hidden, and the page looks completely normal.
+
+After any change that recreates `aws_apigatewayv2_api.visitor`, copy the new
+value across:
+
+```powershell
+terraform -chdir=infra output -raw api_url
+```
+
+Then update `API_BASE_URL` in the portfolio repo and push.
+
+A custom domain mapped to the API removes this step for good, since the
+hostname then stays fixed no matter how often the API is rebuilt.
+
 ## Cleanup
 
 To avoid accidental data loss, inspect the destroy plan before approval:
@@ -69,3 +88,7 @@ terraform -chdir=infra destroy
 
 Destroying the stack deletes the DynamoDB table and its counter. Point-in-time
 recovery does not preserve a table after deletion.
+
+The table carries `lifecycle { prevent_destroy = true }`, so a destroy fails
+rather than silently removing the count. Comment that block out first when you
+genuinely intend to tear the stack down.

@@ -21,6 +21,15 @@ resource "aws_dynamodb_table" "visitor_counter" {
   point_in_time_recovery {
     enabled = true
   }
+
+  # The visitor count lives only here, and point-in-time recovery does not
+  # survive deletion of the table itself. This makes `terraform destroy` fail
+  # loudly rather than quietly discarding it. To tear the stack down on
+  # purpose, comment this block out first - the point is that the decision has
+  # to be deliberate.
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 resource "aws_cloudwatch_log_group" "lambda" {

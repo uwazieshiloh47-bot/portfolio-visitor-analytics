@@ -156,7 +156,14 @@ The complete AWS stack is defined under `infra/`. Before deploying, copy
 `infra/terraform.tfvars.example` to `infra/terraform.tfvars` and replace the
 placeholder with the exact origin of the portfolio frontend.
 
+Terraform state is stored remotely in the private, versioned S3 bucket
+`shiloh-terraform-state-482311061712` under the key
+`portfolio-visitor-counter/dev/terraform.tfstate`. Authenticate the local shell
+before running commands that read the backend or AWS provider:
+
 ```powershell
+aws sso login --profile portfolio-dev
+$env:AWS_PROFILE = "portfolio-dev"
 terraform -chdir=infra fmt -check
 terraform -chdir=infra init
 terraform -chdir=infra validate
@@ -166,5 +173,5 @@ terraform -chdir=infra plan
 The CI workflow runs application checks, creates the deployment bundle, and
 verifies its contents, audits production dependencies for high-severity
 findings, and validates Terraform on pushes to `main` and on pull requests. It
-does not deploy to AWS. It becomes active after this repository is pushed to
-GitHub.
+uses `terraform init -backend=false`, so CI validation does not require access
+to the remote state. It does not deploy to AWS.

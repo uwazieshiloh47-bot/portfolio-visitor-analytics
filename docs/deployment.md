@@ -3,8 +3,21 @@
 ## Prerequisites
 
 - Terraform 1.8 or later
-- AWS credentials for `us-east-2`
+- The AWS CLI profile `portfolio-dev` with access to account `482311061712`
 - The exact deployed portfolio origin, such as `https://www.example.com`
+
+Authenticate and expose the profile to Terraform in the current PowerShell
+session:
+
+```powershell
+aws sso login --profile portfolio-dev
+$env:AWS_PROFILE = "portfolio-dev"
+```
+
+Terraform stores state in the private S3 bucket
+`shiloh-terraform-state-482311061712` under
+`portfolio-visitor-counter/dev/terraform.tfstate`. Bucket versioning provides
+state recovery, and the S3 lockfile prevents concurrent Terraform operations.
 
 Create the Lambda artifact:
 

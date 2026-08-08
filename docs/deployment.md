@@ -52,6 +52,27 @@ terraform -chdir=infra plan -out=visitor.tfplan
 terraform -chdir=infra apply visitor.tfplan
 ```
 
+## Bootstrap the GitHub deployment role
+
+`infra/github-actions.tf` defines a least-privilege OIDC role for the immutable
+identity of the repository's `main` branch. The role can update and inspect only
+the existing visitor Lambda function. It cannot change API Gateway, DynamoDB,
+CloudWatch, IAM, or Terraform state.
+
+Review and apply the Terraform plan locally first. Then copy these outputs and
+known values into GitHub repository variables:
+
+```powershell
+gh variable set AWS_REGION --body "us-east-2"
+gh variable set AWS_ROLE_ARN --body (terraform -chdir=infra output -raw github_actions_deploy_role_arn)
+gh variable set API_URL --body (terraform -chdir=infra output -raw api_url)
+gh variable set LAMBDA_FUNCTION_NAME --body (terraform -chdir=infra output -raw lambda_function_name)
+```
+
+The first deployment remains a manual `workflow_dispatch` run from `main`.
+After the manual run succeeds, push-based deployment can be enabled for changes
+to the Lambda source, package scripts, dependencies, and deployment workflow.
+
 ## Verify the request flow
 
 Get the API URL:

@@ -69,9 +69,10 @@ gh variable set API_URL --body (terraform -chdir=infra output -raw api_url)
 gh variable set LAMBDA_FUNCTION_NAME --body (terraform -chdir=infra output -raw lambda_function_name)
 ```
 
-The first deployment remains a manual `workflow_dispatch` run from `main`.
-After the manual run succeeds, push-based deployment can be enabled for changes
-to the Lambda source, package scripts, dependencies, and deployment workflow.
+The workflow supports manual `workflow_dispatch` runs and automatic deployment
+from `main` when Lambda source, packaging, dependencies, TypeScript
+configuration, smoke-test logic, or the deployment workflow changes. Test-only,
+documentation-only, and Terraform-only changes do not deploy application code.
 
 ## Verify the request flow
 

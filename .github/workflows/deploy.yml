@@ -2,6 +2,17 @@ name: Deploy visitor counter to AWS
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "src/**"
+      - "scripts/package-lambda.mjs"
+      - "scripts/test-api.mjs"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.json"
+      - ".github/workflows/deploy.yml"
 
 permissions:
   contents: read

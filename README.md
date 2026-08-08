@@ -176,23 +176,25 @@ findings, and validates Terraform on pushes to `main` and on pull requests. It
 uses `terraform init -backend=false`, so CI validation does not require access
 to the remote state. It does not deploy to AWS.
 
-## Manual GitHub deployment
+## GitHub deployment
 
 `.github/workflows/deploy.yml` packages and deploys only the Lambda application
 code. It authenticates with GitHub OIDC and a role restricted to the existing
 visitor Lambda, then runs the live API smoke test. Infrastructure changes remain
 manual Terraform operations and are not authorized through this role.
 
-The deployment workflow is manual-only until it has completed successfully.
-After applying the reviewed IAM resources, configure these GitHub repository
-variables:
+The workflow deploys automatically when production Lambda source, packaging,
+dependencies, TypeScript configuration, smoke-test logic, or the deployment
+workflow itself changes on `main`. Documentation, test-only, and Terraform-only
+changes do not redeploy the Lambda. The following repository variables provide
+its non-secret deployment configuration:
 
 - `API_URL`
 - `AWS_REGION`
 - `AWS_ROLE_ARN`
 - `LAMBDA_FUNCTION_NAME`
 
-Run it from the repository's Actions tab by selecting **Deploy visitor counter
-to AWS**, choosing `main`, and selecting **Run workflow**. The smoke test makes
-one real `POST /visit` request, so a successful deployment increments the
-counter once.
+For a manual redeployment, use the repository's Actions tab, select **Deploy
+visitor counter to AWS**, choose `main`, and select **Run workflow**. Every
+successful automatic or manual deployment runs one real `POST /visit` smoke
+test, so it increments the counter once.

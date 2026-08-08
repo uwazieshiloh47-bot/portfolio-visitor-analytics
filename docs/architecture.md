@@ -61,8 +61,14 @@ Postponing them keeps the first debugging surface small.
 ## Version 1 counting semantics
 
 The durable value is the number of successful `POST /visit` requests, not the
-number of unique visitors. The API cannot currently distinguish a person from
-a refresh, bot, monitoring probe, or direct scripted request.
+number of unique visitors. The portfolio frontend normally sends one such
+request per browser tab session and uses `GET /count` for later loads in that
+tab. A successful response sets the tab-scoped session marker.
+
+The API cannot distinguish a person from a new tab, browser, device, unavailable
+browser storage, bot, monitoring probe, or direct scripted request. DynamoDB
+stores only the aggregate count. API Gateway access logs include source IP and
+basic request details for the configured retention period.
 
 CORS is a browser policy, not an access-control boundary. The exact-origin
 configuration prevents unapproved browser origins from reading the API

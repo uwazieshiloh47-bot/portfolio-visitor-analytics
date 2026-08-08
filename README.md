@@ -96,9 +96,18 @@ checkboxes remain open until the resources are deployed and verified in AWS.
 
 ## What the counter means
 
-Version 1 counts successful calls to `POST /visit`. It is an approximate
-request counter, not a count of unique people: refreshes, repeat visits, bots,
-and direct API calls can all increase it.
+The durable value counts successful calls to `POST /visit`. The portfolio
+frontend normally makes that call once per browser tab session, then uses
+`GET /count` for refreshes and later page loads in the same tab. It records the
+session marker only after a successful response.
+
+This remains an approximate request counter, not a count of unique people. A
+new tab, browser, device, unavailable browser storage, bot, monitoring probe,
+or direct API call can increase it.
+
+DynamoDB stores only the aggregate total. API Gateway access logs record the
+source IP and basic request details for operational monitoring and use the
+configured retention period, which defaults to 14 days.
 
 Exact-origin CORS limits which browser frontends can read and invoke the API
 from JavaScript, but CORS is not authentication and does not stop scripts from

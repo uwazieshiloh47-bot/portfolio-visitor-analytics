@@ -14,6 +14,12 @@ aws sso login --profile portfolio-dev
 $env:AWS_PROFILE = "portfolio-dev"
 ```
 
+It has to be this profile. Newer AWS CLI versions can sign in a plain IAM user
+with `aws login`, which is enough for `aws` commands but not for Terraform:
+`login_session` is a CLI-only credential type, so Terraform's SDK ignores it,
+falls back to the SSO token cache, and reports "No valid credential sources
+found" while the CLI is working perfectly beside it.
+
 Terraform stores state in the private S3 bucket
 `shiloh-terraform-state-482311061712` under
 `portfolio-visitor-counter/dev/terraform.tfstate`. Bucket versioning provides
@@ -89,9 +95,17 @@ $env:API_URL = terraform -chdir=infra output -raw api_url
 .\scripts\npm-local.ps1 run test:api
 ```
 
-The test reads the count, increments it once, and confirms the following read
-returns the incremented value. Inspect the Lambda and API Gateway log groups
-and the dashboard URL from the Terraform outputs afterward.
+The test reads the count, posts a visit twice, and confirms the second post did
+not move the total. It deliberately does not assert that the first post
+incremented: the counter allows one visit per address per day, so a machine
+that already visited today is correctly refused, and demanding an increment
+would fail against a working API.
+
+Inspect the Lambda and API Gateway log groups and the dashboard URL from the
+Terraform outputs afterward. A `deduplication_unavailable` entry in the Lambda
+log means the claim write failed for something other than its condition -
+usually the role missing `dynamodb:PutItem` - and the function is counting
+every request until that is fixed.
 
 ## The frontend depends on the generated API URL
 
@@ -111,6 +125,44 @@ Then update `API_BASE_URL` in the portfolio repo and push.
 
 A custom domain mapped to the API removes this step for good, since the
 hostname then stays fixed no matter how often the API is rebuilt.
+
+## Reset the counter to zero
+
+Do this after a period of heavy testing, or immediately before announcing the
+site somewhere new. The count is only worth showing if it starts from a moment
+you can point at.
+
+Record what it was first, in case the number is worth keeping:
+
+```powershell
+$apiBaseUrl = terraform -chdir=infra output -raw api_url
+Invoke-RestMethod -Uri "$apiBaseUrl/count" -Method Get
+```
+
+Then zero it:
+
+```powershell
+aws dynamodb update-item `
+    --table-name portfolio-visitor-counter-dev `
+    --key "counter_id={S=total}" `
+    --update-expression "SET #count = :zero" `
+    --expression-attribute-names "#count=count" `
+    --expression-attribute-values ":zero={N=0}" `
+    --return-values ALL_NEW `
+    --region us-east-2 `
+    --profile portfolio-dev
+```
+
+The returned attributes should show `"count": { "N": "0" }`. Confirm through the
+API, which reads without incrementing:
+
+```powershell
+Invoke-RestMethod -Uri "$apiBaseUrl/count" -Method Get
+```
+
+This writes the total and nothing else. The per-day visit markers are left
+alone deliberately: an address that already counted today stays counted, so
+resetting cannot be used to make one machine count repeatedly.
 
 ## Cleanup
 

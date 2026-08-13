@@ -14,6 +14,16 @@ resource "aws_dynamodb_table" "visitor_counter" {
     type = "S"
   }
 
+  # Alongside the running total, the table holds one short-lived marker per
+  # source address per day, which is how a refresh stops counting as a new
+  # visit. They are the only items here meant to be thrown away, and DynamoDB
+  # does that for free. Without this the markers accumulate forever and the
+  # deduplication window silently becomes "since the beginning of time".
+  ttl {
+    attribute_name = "ttl"
+    enabled        = true
+  }
+
   server_side_encryption {
     enabled = true
   }
@@ -30,6 +40,19 @@ resource "aws_dynamodb_table" "visitor_counter" {
   lifecycle {
     prevent_destroy = true
   }
+}
+
+# Salt for the per-day visit markers. The handler hashes the source IP with
+# this before it becomes a key, so the table never holds an address in a form
+# anyone can read back. IPv4 is small enough to brute-force an unsalted digest,
+# which is the entire reason this exists rather than hashing the address alone.
+#
+# It lives in Terraform state, which is encrypted in S3, and is generated once
+# and kept. Replacing it re-keys every marker, so the day it changes counts
+# some visitors twice; that is the only cost of rotating it.
+resource "random_password" "visit_hash_salt" {
+  length  = 48
+  special = false
 }
 
 resource "aws_cloudwatch_log_group" "lambda" {
@@ -65,9 +88,11 @@ resource "aws_iam_role_policy" "lambda" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid      = "CounterTableAccess"
-        Effect   = "Allow"
-        Action   = ["dynamodb:GetItem", "dynamodb:UpdateItem"]
+        Sid    = "CounterTableAccess"
+        Effect = "Allow"
+        # PutItem is for the per-day visit markers, and only ever as a
+        # conditional write. The function still has no way to delete or scan.
+        Action   = ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:UpdateItem"]
         Resource = aws_dynamodb_table.visitor_counter.arn
       },
       {
@@ -96,8 +121,9 @@ resource "aws_lambda_function" "visitor" {
 
   environment {
     variables = {
-      TABLE_NAME  = aws_dynamodb_table.visitor_counter.name
-      ENVIRONMENT = var.environment
+      TABLE_NAME      = aws_dynamodb_table.visitor_counter.name
+      ENVIRONMENT     = var.environment
+      VISIT_HASH_SALT = random_password.visit_hash_salt.result
     }
   }
 

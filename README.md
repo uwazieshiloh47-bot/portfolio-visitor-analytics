@@ -96,23 +96,36 @@ checkboxes remain open until the resources are deployed and verified in AWS.
 
 ## What the counter means
 
-The durable value counts successful calls to `POST /visit`. The portfolio
-frontend normally makes that call once per browser tab session, then uses
-`GET /count` for refreshes and later page loads in the same tab. It records the
-session marker only after a successful response.
+One visit is one source address on one UTC day. The total is the running sum of
+those, so someone who comes back next week adds a second visit, and someone who
+refreshes ten times this afternoon adds none.
 
-This remains an approximate request counter, not a count of unique people. A
-new tab, browser, device, unavailable browser storage, bot, monitoring probe,
-or direct API call can increase it.
+`POST /visit` enforces that server-side. It first writes a marker item keyed by
+the day and a salted hash of the caller's address, conditional on that key not
+already existing. The write succeeding means this is the day's first request
+from that address, and only then does the total increment. The write failing
+its condition means the day is already counted, so the API returns the current
+total untouched. Markers carry a TTL and DynamoDB deletes them.
 
-DynamoDB stores only the aggregate total. API Gateway access logs record the
-source IP and basic request details for operational monitoring and use the
-configured retention period, which defaults to 14 days.
+The frontend still asks once per browser tab session and uses `GET /count`
+afterwards, but that is now an optimisation rather than the mechanism. Losing
+it - a new tab, a second browser, blocked storage - no longer inflates
+anything.
+
+What this still cannot do is turn addresses into people. An office or a
+household behind one address counts once; a phone moving between wifi and
+cellular counts twice. A bot on a fresh address counts. It is a defensible
+floor on real traffic, not verified analytics.
+
+The table holds the total and the unexpired markers. It never holds an address:
+the digest covers the salt, the day and the address, so the same visitor is
+unlinkable across days and the stored token cannot be reversed without the
+Lambda's environment. Raw addresses appear only in API Gateway access logs,
+which expire on the configured retention period, 14 days by default.
 
 Exact-origin CORS limits which browser frontends can read and invoke the API
 from JavaScript, but CORS is not authentication and does not stop scripts from
-calling the public endpoint. Do not present this value as verified analytics
-until a visit definition and bot or duplicate-request strategy are added.
+calling the public endpoint.
 
 ## Current AWS checkpoint
 

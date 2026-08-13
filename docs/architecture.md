@@ -58,27 +58,46 @@ These are intentionally postponed:
 
 Postponing them keeps the first debugging surface small.
 
-## Version 1 counting semantics
+## Version 2 counting semantics
 
-The durable value is the number of successful `POST /visit` requests, not the
-number of unique visitors. The portfolio frontend normally sends one such
-request per browser tab session and uses `GET /count` for later loads in that
-tab. A successful response sets the tab-scoped session marker.
+The unit is one source address per UTC day, and the durable value is the
+running sum of those. Version 1 counted successful `POST /visit` requests
+instead, which meant the number measured how often the site was exercised
+rather than how often it was read: a fortnight of access logs showed 1,412
+recorded visits, of which four addresses accounted for 1,266, and the quiet
+days in between averaged five.
 
-The API cannot distinguish a person from a new tab, browser, device, unavailable
-browser storage, bot, monitoring probe, or direct scripted request. DynamoDB
-stores only the aggregate count. API Gateway access logs include source IP and
-basic request details for the configured retention period.
+Deduplication is a conditional write, not a check-then-write. `POST /visit`
+puts a marker item keyed `visit#<day>#<digest>` with
+`attribute_not_exists(counter_id)`; the condition failing is the signal that
+the day is already counted. Two simultaneous requests from one address cannot
+both win, because DynamoDB resolves the condition, and no read precedes the
+write to go stale.
+
+The claim is written before the total moves. A failure between the two loses a
+visit, where the reverse order would double-count a client retry. Undercounting
+is the correct bias for a number published on a portfolio.
+
+A failed claim that is *not* a condition failure - a missing TTL setting, a
+role one apply behind the code - falls back to incrementing and logs
+`deduplication_unavailable`. The Lambda deploys from CI on a push to `src/`
+while the table and role are applied by hand, so the code can legitimately
+arrive first, and degrading to version 1 semantics beats returning 500 to every
+visitor.
+
+The digest covers the salt, the day and the address, so markers cannot be
+reversed to an address without the Lambda's environment, and the same visitor
+produces unrelated tokens on different days. Markers carry a TTL. Raw addresses
+live only in API Gateway access logs for the configured retention period.
+
+An address is still not a person. Shared egress undercounts, address rotation
+overcounts, and a bot on a fresh address counts. The value is a floor on real
+traffic rather than verified analytics.
 
 CORS is a browser policy, not an access-control boundary. The exact-origin
 configuration prevents unapproved browser origins from reading the API
 through JavaScript, but it cannot prevent a non-browser client from calling
-the public endpoint. API throttling limits bursts but does not make the count
-trustworthy analytics.
-
-Before the value is described as unique or verified traffic, define the
-desired unit—page view, session, or visitor—and add appropriate deduplication
-and abuse controls.
+the public endpoint. API throttling limits bursts.
 
 ## Infrastructure controls
 
